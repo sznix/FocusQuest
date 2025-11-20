@@ -1,0 +1,9 @@
+
+> focusquest@1.0.0 start
+> next start -p 5000 -H 0.0.0.0
+
+   ▲ Next.js 15.5.6
+   - Local:        http://localhost:5000
+   - Network:      http://0.0.0.0:5000
+
+ ✓ Starting...
