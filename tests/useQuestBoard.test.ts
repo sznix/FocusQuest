@@ -21,6 +21,7 @@ describe('useQuestBoard', () => {
     const newQuest: Quest = {
       id: '1',
       title: 'Test Quest',
+      difficulty: 'Normal',
       status: 'Backlog',
       xpReward: 50
     };
@@ -38,6 +39,7 @@ describe('useQuestBoard', () => {
     const newQuest: Quest = {
       id: '1',
       title: 'Test Quest',
+      difficulty: 'Normal',
       status: 'Backlog',
       xpReward: 50
     };
@@ -60,6 +62,7 @@ describe('useQuestBoard', () => {
     const newQuest: Quest = {
       id: '1',
       title: 'Test Quest',
+      difficulty: 'Normal',
       status: 'Doing',
       xpReward: 50
     };
@@ -82,6 +85,7 @@ describe('useQuestBoard', () => {
     const newQuest: Quest = {
       id: '1',
       title: 'Test Quest',
+      difficulty: 'Normal',
       status: 'Backlog',
       xpReward: 50
     };
@@ -103,9 +107,9 @@ describe('useQuestBoard', () => {
     // We need to simulate adding enough XP.
     // Let's say we move 3 quests from Doing to Done (50 XP each = 150 XP)
 
-    const q1: Quest = { id: '1', title: 'Q1', status: 'Doing', xpReward: 50 };
-    const q2: Quest = { id: '2', title: 'Q2', status: 'Doing', xpReward: 50 };
-    const q3: Quest = { id: '3', title: 'Q3', status: 'Doing', xpReward: 50 };
+    const q1: Quest = { id: '1', title: 'Q1', difficulty: 'Normal', status: 'Doing', xpReward: 50 };
+    const q2: Quest = { id: '2', title: 'Q2', difficulty: 'Normal', status: 'Doing', xpReward: 50 };
+    const q3: Quest = { id: '3', title: 'Q3', difficulty: 'Normal', status: 'Doing', xpReward: 50 };
 
     act(() => {
       result.current.addQuest(q1);
