@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Quest, QuestStatus, PlayerStats } from "@/types";
+import { Quest, QuestStatus, PlayerStats, sanitizeQuestList } from "@/types";
 
 const XP_REWARDS = {
   START_QUEST: 10,
@@ -7,7 +7,61 @@ const XP_REWARDS = {
 };
 
 const BASE_XP_TO_LEVEL = 100;
-const XP_SCALING_FACTOR = 1.5;
+const XP_INCREMENT_PER_LEVEL = 50;
+
+function calculateXpToNextLevel(level: number) {
+  return Math.max(BASE_XP_TO_LEVEL, BASE_XP_TO_LEVEL + (level - 1) * XP_INCREMENT_PER_LEVEL);
+}
+
+function launchConfettiBurst() {
+  if (typeof window === "undefined") return;
+
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.inset = "0";
+  container.style.pointerEvents = "none";
+  container.style.overflow = "hidden";
+  container.style.zIndex = "50";
+  document.body.appendChild(container);
+
+  const colors = ["#fbbf24", "#d97706", "#b45309"];
+  const particleCount = 80;
+
+  for (let i = 0; i < particleCount; i += 1) {
+    const piece = document.createElement("span");
+    const size = 6 + Math.random() * 6;
+    piece.style.position = "absolute";
+    piece.style.width = `${size}px`;
+    piece.style.height = `${size * 0.6}px`;
+    piece.style.backgroundColor = colors[i % colors.length];
+    piece.style.top = "-8px";
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.borderRadius = "2px";
+    piece.style.transform = `rotate(${Math.random() * 180}deg)`;
+    container.appendChild(piece);
+
+    const fallDistance = 80 + Math.random() * 60;
+    const horizontalDrift = (Math.random() - 0.5) * 120;
+    const animation = piece.animate(
+      [
+        { opacity: 1, transform: piece.style.transform },
+        {
+          opacity: 0,
+          transform: `translate(${horizontalDrift}px, ${fallDistance}px) rotate(${360 * Math.random()}deg)`,
+        },
+      ],
+      {
+        duration: 1200 + Math.random() * 600,
+        easing: "cubic-bezier(0.33, 1, 0.68, 1)",
+        fill: "forwards",
+      },
+    );
+
+    animation.onfinish = () => piece.remove();
+  }
+
+  window.setTimeout(() => container.remove(), 1800);
+}
 
 export function useQuestBoard() {
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -28,20 +82,21 @@ export function useQuestBoard() {
 
       if (storedQuests) {
         const parsed: unknown = JSON.parse(storedQuests);
-        if (Array.isArray(parsed)) {
-          // Basic validation would go here, similar to before
-          // For brevity, assuming structure is mostly correct but adding defaults
-          const validQuests = parsed.map((q: any) => ({
-            ...q,
-            difficulty: q.difficulty || "Normal",
-            xpReward: q.xpReward || XP_REWARDS.COMPLETE_QUEST, // Backfill
-          }));
-          setQuests(validQuests);
-        }
+        setQuests(sanitizeQuestList(parsed));
       }
 
       if (storedStats) {
-        setPlayerStats(JSON.parse(storedStats));
+        const parsedStats: unknown = JSON.parse(storedStats);
+        if (parsedStats && typeof parsedStats === "object") {
+          const level = Math.max(1, Number((parsedStats as PlayerStats).level) || 1);
+          const xpToNextLevel = calculateXpToNextLevel(level);
+          const currentXp = Math.min(
+            Math.max(0, Number((parsedStats as PlayerStats).currentXp) || 0),
+            xpToNextLevel,
+          );
+
+          setPlayerStats({ level, currentXp, xpToNextLevel });
+        }
       }
     } catch (error) {
       console.error("Failed to load data", error);
@@ -68,15 +123,21 @@ export function useQuestBoard() {
 
   const addXp = useCallback((amount: number) => {
     setPlayerStats((prev) => {
-      let { level, currentXp, xpToNextLevel } = prev;
+      let { level, currentXp } = prev;
+      let xpToNextLevel = calculateXpToNextLevel(level);
       currentXp += amount;
+      let leveledUp = false;
 
       // Level up logic
       while (currentXp >= xpToNextLevel) {
         currentXp -= xpToNextLevel;
         level += 1;
-        xpToNextLevel = Math.floor(xpToNextLevel * XP_SCALING_FACTOR);
-        // Optional: Add a toast or sound effect here
+        xpToNextLevel = calculateXpToNextLevel(level);
+        leveledUp = true;
+      }
+
+      if (leveledUp) {
+        launchConfettiBurst();
       }
 
       return { level, currentXp, xpToNextLevel };

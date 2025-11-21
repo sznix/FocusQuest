@@ -1,6 +1,7 @@
 import { memo, useMemo, useState, useCallback, type DragEvent } from "react";
 import { Quest, QuestStatus } from "@/types";
 import { QuestCard } from "./QuestCard";
+import { useListAutoAnimate } from "@/hooks/useListAutoAnimate";
 
 type QuestColumnProps = {
   column: QuestStatus;
@@ -24,6 +25,7 @@ export const QuestColumn = memo(function QuestColumn({
   onDragEnd,
 }: QuestColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [listRef] = useListAutoAnimate<HTMLUListElement>();
 
   const questsInColumn = useMemo(() => {
     return quests.filter((quest) => quest.status === column);
@@ -77,7 +79,7 @@ export const QuestColumn = memo(function QuestColumn({
             </p>
           </div>
         ) : (
-          <ul className="space-y-4 transition-all duration-300">
+          <ul ref={listRef} className="space-y-4 transition-all duration-300">
             {questsInColumn.map((quest) => (
               <QuestCard
                 key={quest.id}

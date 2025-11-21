@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { QuestStatus } from "@/types";
+import { QuestStatus, sanitizeQuestList } from "@/types";
 import { QuestColumn } from "@/components/QuestColumn";
 import { QuestForm } from "@/components/QuestForm";
 import { PlayerStatsBar } from "@/components/PlayerStatsBar";
@@ -106,27 +106,7 @@ export default function HomePage() {
       reader.onload = () => {
         try {
           const parsed = JSON.parse(reader.result as string);
-          if (!Array.isArray(parsed)) return;
-
-          const validStatuses: QuestStatus[] = ["Backlog", "Doing", "Done"];
-          const validDifficulties = ["Easy", "Normal", "Hard", "Epic"] as const;
-
-          const sanitized = parsed
-            .map((quest: any) => {
-              if (!quest?.id || !quest?.title) return null;
-              const status = validStatuses.includes(quest.status) ? quest.status : "Backlog";
-              const difficulty = validDifficulties.includes(quest.difficulty) ? quest.difficulty : "Normal";
-
-              return {
-                id: String(quest.id),
-                title: String(quest.title),
-                description: quest.description ? String(quest.description) : undefined,
-                status,
-                difficulty,
-                xpReward: typeof quest.xpReward === "number" ? quest.xpReward : 50,
-              };
-            })
-            .filter(Boolean);
+          const sanitized = sanitizeQuestList(parsed);
 
           if (sanitized.length > 0) {
             replaceQuests(sanitized as typeof quests);
