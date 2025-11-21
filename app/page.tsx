@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { QuestStatus } from "@/types";
 import { QuestColumn } from "@/components/QuestColumn";
 import { QuestForm } from "@/components/QuestForm";
@@ -16,9 +16,14 @@ export default function HomePage() {
     mounted,
     addQuest,
     updateQuestStatus,
+    updateQuestDetails,
     deleteQuest,
     clearAllQuests,
+    replaceQuests,
   } = useQuestBoard();
+
+  const [draggingQuestId, setDraggingQuestId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const questCounts = useMemo(() => {
     return quests.reduce(
@@ -47,6 +52,95 @@ export default function HomePage() {
             allQuestsComplete ? " · Glorious Victory! 🎉" : ""
           }`,
     [totalQuests, questCounts, allQuestsComplete]
+  );
+
+  const handleDragStart = useCallback((id: string) => {
+    setDraggingQuestId(id);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggingQuestId(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    (column: QuestStatus) => {
+      if (!draggingQuestId) return;
+
+      const quest = quests.find((q) => q.id === draggingQuestId);
+      if (quest && quest.status !== column) {
+        updateQuestStatus(draggingQuestId, column);
+      }
+      setDraggingQuestId(null);
+    },
+    [draggingQuestId, quests, updateQuestStatus],
+  );
+
+  const handleEditQuest = useCallback(
+    (id: string, updates: Partial<typeof quests[number]>) => {
+      updateQuestDetails(id, updates);
+    },
+    [updateQuestDetails],
+  );
+
+  const handleExport = useCallback(() => {
+    const data = JSON.stringify(quests, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "focusquest-backup.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [quests]);
+
+  const handleImportClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleImport = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result as string);
+          if (!Array.isArray(parsed)) return;
+
+          const validStatuses: QuestStatus[] = ["Backlog", "Doing", "Done"];
+          const validDifficulties = ["Easy", "Normal", "Hard", "Epic"] as const;
+
+          const sanitized = parsed
+            .map((quest: any) => {
+              if (!quest?.id || !quest?.title) return null;
+              const status = validStatuses.includes(quest.status) ? quest.status : "Backlog";
+              const difficulty = validDifficulties.includes(quest.difficulty) ? quest.difficulty : "Normal";
+
+              return {
+                id: String(quest.id),
+                title: String(quest.title),
+                description: quest.description ? String(quest.description) : undefined,
+                status,
+                difficulty,
+                xpReward: typeof quest.xpReward === "number" ? quest.xpReward : 50,
+              };
+            })
+            .filter(Boolean);
+
+          if (sanitized.length > 0) {
+            replaceQuests(sanitized as typeof quests);
+          }
+        } catch (error) {
+          console.error("Import failed", error);
+        } finally {
+          event.target.value = "";
+        }
+      };
+
+      reader.readAsText(file);
+    },
+    [replaceQuests],
   );
 
   if (!mounted) {
@@ -80,6 +174,29 @@ export default function HomePage() {
             Abandon All Quests
           </button>
         ) : null}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={handleExport}
+            className="rounded border border-amber-800/40 bg-amber-900/10 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-amber-200 transition hover:border-amber-600 hover:text-amber-100"
+          >
+            Export Quests
+          </button>
+          <button
+            type="button"
+            onClick={handleImportClick}
+            className="rounded border border-sky-800/40 bg-sky-900/10 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-sky-200 transition hover:border-sky-500 hover:text-sky-50"
+          >
+            Import Quests
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={handleImport}
+          />
+        </div>
       </div>
 
       <section className="max-w-6xl mx-auto space-y-10">
@@ -97,6 +214,10 @@ export default function HomePage() {
                 quests={quests}
                 onUpdateStatus={updateQuestStatus}
                 onDelete={deleteQuest}
+                onEdit={handleEditQuest}
+                onDropQuest={handleDrop}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
               />
             );
           })}
