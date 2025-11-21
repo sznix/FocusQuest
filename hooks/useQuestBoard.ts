@@ -33,6 +33,7 @@ export function useQuestBoard() {
           // For brevity, assuming structure is mostly correct but adding defaults
           const validQuests = parsed.map((q: any) => ({
             ...q,
+            difficulty: q.difficulty || "Normal",
             xpReward: q.xpReward || XP_REWARDS.COMPLETE_QUEST, // Backfill
           }));
           setQuests(validQuests);
@@ -95,7 +96,7 @@ export function useQuestBoard() {
       if (quest.status === "Backlog" && newStatus === "Doing") {
         addXp(XP_REWARDS.START_QUEST);
       } else if (quest.status === "Doing" && newStatus === "Done") {
-        addXp(XP_REWARDS.COMPLETE_QUEST);
+        addXp(quest.xpReward || XP_REWARDS.COMPLETE_QUEST);
       }
 
       return previous.map((q) =>
@@ -106,6 +107,18 @@ export function useQuestBoard() {
 
   const deleteQuest = useCallback((id: string) => {
     setQuests((previous) => previous.filter((quest) => quest.id !== id));
+  }, []);
+
+  const updateQuestDetails = useCallback((id: string, updates: Partial<Quest>) => {
+    setQuests((previous) =>
+      previous.map((quest) =>
+        quest.id === id ? { ...quest, ...updates } : quest,
+      )
+    );
+  }, []);
+
+  const replaceQuests = useCallback((updatedQuests: Quest[]) => {
+    setQuests(updatedQuests);
   }, []);
 
   const clearAllQuests = useCallback(() => {
@@ -120,7 +133,9 @@ export function useQuestBoard() {
     mounted,
     addQuest,
     updateQuestStatus,
+    updateQuestDetails,
     deleteQuest,
     clearAllQuests,
+    replaceQuests,
   };
 }

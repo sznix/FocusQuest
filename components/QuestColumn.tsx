@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback, type DragEvent } from "react";
 import { Quest, QuestStatus } from "@/types";
 import { QuestCard } from "./QuestCard";
 
@@ -7,9 +7,24 @@ type QuestColumnProps = {
   quests: Quest[];
   onUpdateStatus: (id: string, newStatus: QuestStatus) => void;
   onDelete: (id: string) => void;
+  onEdit: (id: string, updates: Partial<Quest>) => void;
+  onDropQuest: (column: QuestStatus) => void;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
 };
 
-export const QuestColumn = memo(function QuestColumn({ column, quests, onUpdateStatus, onDelete }: QuestColumnProps) {
+export const QuestColumn = memo(function QuestColumn({
+  column,
+  quests,
+  onUpdateStatus,
+  onDelete,
+  onEdit,
+  onDropQuest,
+  onDragStart,
+  onDragEnd,
+}: QuestColumnProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const questsInColumn = useMemo(() => {
     return quests.filter((quest) => quest.status === column);
   }, [quests, column]);
@@ -22,8 +37,30 @@ export const QuestColumn = memo(function QuestColumn({ column, quests, onUpdateS
     }
   }, [column]);
 
+  const handleDragOver = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(false);
+    onDropQuest(column);
+  }, [column, onDropQuest]);
+
   return (
-    <article className="flex flex-col rounded-xl border-2 border-slate-800 bg-slate-950/80 shadow-2xl shadow-black overflow-hidden">
+    <article
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex flex-col rounded-xl border-2 bg-slate-950/80 shadow-2xl shadow-black overflow-hidden transition ${
+        isDragOver ? "border-amber-600/70 shadow-amber-900/40" : "border-slate-800"
+      }`}
+    >
       <header className="border-b-2 border-slate-800 bg-slate-900/90 px-5 py-4 text-center">
         <h2 className="text-lg font-serif font-bold tracking-widest uppercase text-amber-500/90 drop-shadow-sm">
           {columnTitle}
@@ -40,13 +77,16 @@ export const QuestColumn = memo(function QuestColumn({ column, quests, onUpdateS
             </p>
           </div>
         ) : (
-          <ul className="space-y-4">
+          <ul className="space-y-4 transition-all duration-300">
             {questsInColumn.map((quest) => (
               <QuestCard
                 key={quest.id}
                 quest={quest}
                 onUpdateStatus={onUpdateStatus}
                 onDelete={onDelete}
+                onEdit={onEdit}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
               />
             ))}
           </ul>
